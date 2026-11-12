@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>GTA VI Sign BLE Probe</title>
+<style>
+:root{--bg:#0b0614;--card:#1a0f2e;--card2:#241442;--pink:#ff2e93;--orange:#ff8a00;--purple:#8a3ffc;--teal:#27e3d1;--txt:#f4eaff;--mut:#a897c9;--bad:#ff4d6d;--ok:#3ddc97}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:radial-gradient(1200px 600px at 50% -10%,#3a1170 0,#0b0614 60%) fixed;color:var(--txt);font:16px/1.4 -apple-system,system-ui,Segoe UI,Roboto,sans-serif;padding:12px 12px 130px}
+h1{font-size:22px;margin:4px 0 2px;background:linear-gradient(90deg,var(--pink),var(--orange));-webkit-background-clip:text;background-clip:text;color:transparent;letter-spacing:.5px}
+h2{font-size:17px;margin:0 0 4px}
+.sub{color:var(--mut);font-size:13px;margin-bottom:10px}
+.card{background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid #3a2466;border-radius:16px;padding:14px;margin:12px 0}
+.card.done{border-color:#3ddc9755}
+.step{font-size:12px;color:var(--pink);font-weight:700;letter-spacing:1px;text-transform:uppercase}
+.badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:99px;margin-left:6px;font-weight:700;vertical-align:middle}
+.safe{background:#3ddc9722;color:var(--ok)}.risk{background:#ffb02022;color:#ffb020}.exp{background:#ff4d6d22;color:var(--bad)}
+p{margin:6px 0}.mut{color:var(--mut);font-size:13px}
+button,select,input,textarea{font:inherit}
+button{border:0;border-radius:12px;padding:13px 14px;color:#fff;background:#3a2466;font-weight:600;min-height:48px}
+button:active{transform:scale(.98)}
+button.pri{background:linear-gradient(90deg,var(--pink),var(--purple))}
+button.send{background:linear-gradient(90deg,var(--purple),#5b2bd6)}
+button.sm{min-height:38px;padding:8px 12px;font-size:14px}
+button:disabled{opacity:.4}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.row>button{flex:1 1 140px}
+.hex{font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--teal);background:#0008;border-radius:8px;padding:6px 8px;margin:4px 0;word-break:break-all;white-space:pre-wrap}
+.q{margin-top:10px;border-top:1px dashed #4a3380;padding-top:8px}
+.q b{font-size:14px}
+.ans{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:6px 0}
+.ans button{min-height:42px;padding:6px 4px;font-size:13px;background:#2e1c52}
+.ans button.sel{background:linear-gradient(90deg,var(--pink),var(--orange));color:#000}
+.ans button.frz.sel{background:var(--bad);color:#fff}
+input[type=text],input[type=number],textarea,select{width:100%;background:#0b0614;border:1px solid #4a3380;color:var(--txt);border-radius:10px;padding:10px}
+textarea{min-height:90px;font-family:ui-monospace,Menlo,monospace;font-size:13px}
+label{font-size:13px;color:var(--mut);display:block;margin:6px 0 2px}
+.inl{display:flex;gap:8px;align-items:end}.inl>div{flex:1}
+.warn{background:#ff4d6d1f;border:1px solid var(--bad);color:#ffd0d8;border-radius:12px;padding:10px;font-size:14px;margin:8px 0}
+.err{background:#3b0a14;border:1px solid var(--bad);color:#ffd0d8;border-radius:12px;padding:10px;font:12px ui-monospace,monospace;white-space:pre-wrap;word-break:break-word;margin:8px 0;display:none}
+#status{font-size:14px}
+#status.on{color:var(--ok)}#status.off{color:var(--bad)}
+#log{width:100%;height:320px;font:11px/1.35 ui-monospace,Menlo,monospace;white-space:pre;overflow:auto;background:#000a;border-radius:10px;padding:8px;color:#d9c7ff}
+#bar{position:fixed;left:0;right:0;bottom:0;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:#0b0614ee;backdrop-filter:blur(8px);border-top:1px solid #3a2466;display:flex;gap:8px;z-index:9}
+#alloff{flex:3;background:linear-gradient(90deg,#ff1744,#ff2e93);font-size:20px;min-height:62px;letter-spacing:1px}
+#bar .b2{flex:1;min-height:62px;font-size:13px}
+.chk{display:flex;gap:8px;align-items:center;font-size:14px;color:var(--txt);margin:6px 0}.chk input{width:20px;height:20px}
+.swatch{height:26px;border-radius:8px;margin:6px 0}
+details summary{cursor:pointer;color:var(--pink);font-weight:600;margin:6px 0}
+a{color:var(--teal)}
+</style>
+</head>
+<body>
+<h1>GTA VI SIGN · BLE PROBE</h1>
+<div class="sub">Tests what your sign's controller (MELK-OA10 / StripX family) actually accepts. Work top to bottom. Safest first.</div>
+
+<div class="warn"><b>If the sign freezes or stops responding:</b> unplug it for 5 seconds, plug it back in, then tap <b>Reconnect</b>. Nothing breaks, some MELK-OA10 controllers just hang on certain frames until power is cycled. Close the StripX app first (the controller only allows one connection).</div>
+
+<div class="card" id="connCard">
+  <div class="step">Step 0 · Connect <span class="badge safe">safe</span></div>
+  <p id="status" class="off">Not connected</p>
+  <div class="row">
+    <button class="pri" id="btnConnect">Connect to sign</button>
+    <button id="btnConnectAll">Show all devices</button>
+  </div>
+  <div class="row">
+    <button id="btnReconnect" class="sm">Reconnect</button>
+    <button id="btnDisconnect" class="sm">Disconnect</button>
+    <button id="btnTree" class="sm">Re-scan GATT</button>
+  </div>
+  <div id="connErr" class="err"></div>
+  <details><summary>Options</summary>
+    <label>Delay after each write (ms)</label><input type="number" id="delay" value="100" min="0" max="2000">
+    <label>Split writes into chunks of N bytes (0 = one write)</label><input type="number" id="chunk" value="0" min="0" max="512">
+    <div class="chk"><input type="checkbox" id="readback" checked><span>Read the write characteristic back after each send (logs any reply)</span></div>
+    <label>Extra service UUIDs to enumerate (comma separated, e.g. ffe0, 0000abcd-0000-1000-8000-00805f9b34fb)</label>
+    <input type="text" id="extraSvc" placeholder="optional">
+    <label>Write characteristic UUID (blank = auto: fff3, else first writable)</label>
+    <input type="text" id="wuuid" placeholder="fff3">
+  </details>
+  <p class="mut">Pick the device named like MELK-OA10. If nothing shows up, try "Show all devices". Browser must be Bluefy (iPhone) or Chrome (Android). Safari can't do this.</p>
+</div>
+
+<div id="steps"></div>
+
+<div class="card" id="resultsCard">
+  <div class="step">Results log <span class="badge safe">paste this back</span></div>
+  <p class="mut">Everything lands here: GATT tree, frames sent, replies, your answers. Tap Copy or Share when you're done and send it to me.</p>
+  <div class="row">
+    <button class="pri" id="btnCopy">Copy results</button>
+    <button class="pri" id="btnShare">Share</button>
+    <button class="sm" id="btnClear">Clear log</button>
+  </div>
+  <pre id="log"></pre>
+</div>
+
+<div id="bar">
+  <button id="alloff">ALL OFF</button>
+  <button class="b2" onclick="document.getElementById('resultsCard').scrollIntoView({behavior:'smooth'})">Log ↓</button>
+</div>
+
+<script>
+'use strict';
+const EFFECT_NAMES = __EFFECTS__;
+const SVC = s => (s.length<=4 ? `0000${s.toLowerCase().padStart(4,'0')}-0000-1000-8000-00805f9b34fb` : s.toLowerCase());
+const OPTIONAL = ['fff0','1800','1801','180a','180f','ffe0','ffe5','ffd0','ffb0','fee0','fee7','ae00','ff00','fd00','fe59','6e400001-b5a3-f393-e0a9-e50e24dcca9e'].map(SVC);
+OPTIONAL.push('battery_service','device_information','generic_access','generic_attribute');
+const $ = s => document.querySelector(s);
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+
+/* ---------------- logging ---------------- */
+let LOG = [];
+try{ LOG = JSON.parse(localStorage.getItem('gtasign_log')||'[]'); }catch(e){}
+function L(kind, msg){
+  const t = new Date().toISOString().slice(11,23);
+  LOG.push(`[${t}] ${kind.padEnd(5)} ${msg}`);
+  try{ localStorage.setItem('gtasign_log', JSON.stringify(LOG.slice(-1500))); }catch(e){}
+  renderLog();
+}
+function renderLog(){ const el=$('#log'); el.textContent = LOG.join('\n'); el.scrollTop = el.scrollHeight; }
+function errStr(e){ return `${e && e.name || 'Error'}: ${e && e.message || e}` + (e && e.code!==undefined ? ` (code ${e.code})`:''); }
+function showErr(e, ctx){ const s=`${ctx||'Error'}\n${errStr(e)}\n${e&&e.stack?e.stack.split('\n').slice(0,4).join('\n'):''}`; const b=$('#connErr'); b.style.display='block'; b.textContent=s; L('ERR', `${ctx||''} ${errStr(e)}`); }
+function clearErr(){ $('#connErr').style.display='none'; }
+
+/* ---------------- helpers ---------------- */
+const hex = u8 => Array.from(u8, b=>b.toString(16).padStart(2,'0').toUpperCase()).join(' ');
+function parseHex(s){
+  const clean = s.replace(/0x/gi,'').replace(/[^0-9a-fA-F]/g,'');
+  if(!clean.length) throw new Error('No hex found');
+  if(clean.length%2) throw new Error('Odd number of hex digits');
+  const out=[]; for(let i=0;i<clean.length;i+=2) out.push(parseInt(clean.substr(i,2),16)); return out;
+}
+const b2 = n => Math.max(0,Math.min(255,Math.round(n)));
+const rgbHex = h => { const m=/^#?([0-9a-f]{6})$/i.exec(h); if(!m) throw new Error('bad color '+h); const n=parseInt(m[1],16); return [n>>16&255,n>>8&255,n&255]; };
+const F = a => a.map(b2);
+
+/* ---------------- BLE ---------------- */
+let gen=0, dev=null, server=null, wchar=null, lastCount=null, chain=Promise.resolve(), allChars=[];
+function setStatus(txt, on){ const s=$('#status'); s.textContent=txt; s.className=on?'on':'off'; }
+function delayMs(){ return Math.max(0, +$('#delay').value||0); }
+
+async function connect(all){
+  clearErr();
+  if(!navigator.bluetooth){ showErr(new Error('navigator.bluetooth is missing. Use Bluefy on iPhone or Chrome on Android, and open this page over https.'),'Unsupported browser'); return; }
+  try{
+    const extra = $('#extraSvc').value.split(',').map(s=>s.trim()).filter(Boolean).map(SVC);
+    const optionalServices = [...OPTIONAL, ...extra];
+    const opts = all ? {acceptAllDevices:true, optionalServices}
+      : {filters:['MELK','ELK','OA','LEDnet','duoCo'].map(p=>({namePrefix:p})), optionalServices};
+    L('INFO', `requestDevice ${all?'acceptAllDevices':'filtered'} UA=${navigator.userAgent}`);
+    dev = await navigator.bluetooth.requestDevice(opts);
+    L('INFO', `Picked device name="${dev.name}" id=${dev.id}`);
+    dev.removeEventListener('gattserverdisconnected', onDisc);
+    dev.addEventListener('gattserverdisconnected', onDisc);
+    await doConnect();
+  }catch(e){ showErr(e,'Connect failed'); setStatus('Not connected', false); }
+}
+function onDisc(){ L('INFO','GATT disconnected'); setStatus('Disconnected. Tap Reconnect.', false); wchar=null; }
+async function doConnect(){
+  setStatus('Connecting…', false);
+  server = await dev.gatt.connect();
+  L('INFO','GATT connected');
+  await enumerate();
+  setStatus(`Connected: ${dev.name||dev.id}${wchar?`  ·  write char ${wchar.uuid.slice(4,8)}`:'  ·  NO write char found'}`, !!wchar);
+}
+async function reconnect(){ clearErr(); try{ if(!dev) throw new Error('No device yet. Tap Connect first.'); if(dev.gatt.connected) dev.gatt.disconnect(); await sleep(400); await doConnect(); }catch(e){ showErr(e,'Reconnect failed'); } }
+function disconnect(){ try{ if(dev&&dev.gatt.connected) dev.gatt.disconnect(); }catch(e){ showErr(e,'Disconnect'); } }
+const props = p => ['broadcast','read','writeWithoutResponse','write','notify','indicate','authenticatedSignedWrites','reliableWrite','writableAuxiliaries'].filter(k=>p[k]).join('|');
+
+async function enumerate(){
+  L('GATT','--- GATT tree for '+(dev.name||dev.id)+' ---');
+  allChars=[]; wchar=null;
+  let services=[];
+  try{ services = await server.getPrimaryServices(); }catch(e){ L('ERR','getPrimaryServices '+errStr(e)); }
+  if(!services.length) L('GATT','(no services returned. The browser only exposes services that were in optionalServices.)');
+  const wantU = $('#wuuid').value.trim();
+  for(const s of services){
+    L('GATT',`SERVICE ${s.uuid}`);
+    let chars=[];
+    try{ chars = await s.getCharacteristics(); }catch(e){ L('ERR',`getCharacteristics ${s.uuid}: ${errStr(e)}`); continue; }
+    for(const c of chars){
+      L('GATT',`  CHAR ${c.uuid}  props=[${props(c.properties)}]`);
+      allChars.push(c);
+      if(c.properties.read && !c.properties.notify){
+        try{ const v=await c.readValue(); L('GATT',`    read -> ${hex(new Uint8Array(v.buffer))}`);}catch(e){ L('GATT',`    read failed: ${errStr(e)}`);} }
+      if(c.properties.notify||c.properties.indicate){
+        try{
+          c.removeEventListener('characteristicvaluechanged', onNotify);
+          c.addEventListener('characteristicvaluechanged', onNotify);
+          await c.startNotifications(); L('GATT',`    subscribed to notifications`);
+        }catch(e){ L('GATT',`    subscribe failed: ${errStr(e)}`); }
+      }
+      const isW = c.properties.write||c.properties.writeWithoutResponse;
+      if(isW){
+        if(wantU ? c.uuid.includes(SVC(wantU).slice(4,8)) || c.uuid===SVC(wantU) : c.uuid===SVC('fff3')) wchar=c;
+      }
+    }
+  }
+  if(!wchar){ wchar = allChars.find(c=>c.service.uuid===SVC('fff0') && (c.properties.write||c.properties.writeWithoutResponse)) || allChars.find(c=>c.properties.write||c.properties.writeWithoutResponse) || null; }
+  L('GATT', wchar?`Using write characteristic ${wchar.uuid} (${wchar.properties.writeWithoutResponse?'writeValueWithoutResponse':'writeValue'})`:'No writable characteristic found');
+}
+function onNotify(ev){ const v=new Uint8Array(ev.target.value.buffer); L('RX',`${ev.target.uuid.slice(4,8)} notify ${hex(v)}`); parseReply(v,'notify'); }
+function parseReply(v, src){
+  if(v.length>=5 && v[0]===0x7e && v[2]===0x37){ lastCount=v[3]|(v[4]<<8); L('INFO',`Reply (${src}) looks like a node-count reply: ${lastCount}`); const n=$('#ledCount'); if(n&&!n.dataset.touched) n.value=lastCount; }
+  if(v.length>=4 && v[0]===0x7e && v[2]===0x36){ L('INFO',`Reply (${src}) looks like a scene-node reply: ${v[3]}`); const pn=$('#pxNodes'); if(pn&&!pn.dataset.touched&&v[3]>=2) pn.value=v[3]; }
+}
+
+async function writeRaw(bytes, label){
+  if(!wchar || !dev || !dev.gatt.connected) throw new Error('Not connected. Tap Connect or Reconnect.');
+  const data = Uint8Array.from(bytes);
+  const chunk = +$('#chunk').value||0;
+  const parts=[]; if(chunk>0){ for(let i=0;i<data.length;i+=chunk) parts.push(data.slice(i,i+chunk)); } else parts.push(data);
+  const nr = wchar.properties.writeWithoutResponse && wchar.writeValueWithoutResponse;
+  for(let i=0;i<parts.length;i++){
+    if(nr) await wchar.writeValueWithoutResponse(parts[i]); else await wchar.writeValue(parts[i]);
+    if(i<parts.length-1) await sleep(Math.max(20,delayMs()));
+  }
+  L('TX',`${label?label+' | ':''}${hex(data)}  (${data.length}B, ${nr?'noresp':'withresp'}${parts.length>1?', '+parts.length+' chunks':''})`);
+  await sleep(delayMs());
+}
+async function readBack(){
+  if(!$('#readback').checked || !wchar || !wchar.properties.read) return;
+  try{ await sleep(120); const v=await wchar.readValue(); const u=new Uint8Array(v.buffer); const trimmed=hex(u).replace(/( 00)+$/,''); L('RD',`${wchar.uuid.slice(4,8)} read ${trimmed}`); parseReply(u,'read'); }catch(e){ L('RD','read failed '+errStr(e)); }
+}
+/* frames: array of byte arrays or {b:[..],wait:ms} ; serialised */
+function sendFrames(frames, label){
+  const myGen=gen;
+  const run = async()=>{
+    for(const f of frames){
+      if(myGen!==gen){ L('INFO','queued send cancelled (All Off)'); return; }
+      const b = Array.isArray(f)?f:f.b; const w = Array.isArray(f)?0:(f.wait||0);
+      await writeRaw(b,label); if(w) await sleep(w);
+    }
+    await readBack();
+  };
+  chain = chain.then(run).catch(e=>{ showErr(e,'Write failed: '+(label||'')); throw e; }).catch(()=>{});
+  return chain;
+}
+
+/* ---------------- dialects ---------------- */
+const A = {
+  on:  [0x7e,0x04,0x04,0xf0,0x00,0x01,0xff,0x00,0xef],
+  off: [0x7e,0x04,0x04,0x00,0x00,0x00,0xff,0x00,0xef],
+  color:(r,g,b)=>F([0x7e,0x00,0x05,0x03,r,g,b,0x00,0xef]),
+  bright:i=>F([0x7e,0x04,0x01,i,0x01,0xff,0xff,0x00,0xef]),
+  effect:v=>F([0x7e,0x05,0x03,v,0x06,0xff,0xff,0x00,0xef]),
+};
+const B = {
+  on:  [0x7e,0x07,0x04,0x01,0x00,0xff,0xff,0x00,0xef],
+  off: [0x7e,0x07,0x04,0x00,0x00,0xff,0xff,0x00,0xef],
+  color:(r,g,b)=>F([0x7e,0x07,0x05,0x03,r,g,b,0x10,0xef]),
+  bright:i=>F([0x7e,0x07,0x01,i,0xff,0xff,0xff,0x00,0xef]),
+  effect:v=>F([0x7e,0x07,0x03,v,0xff,0xff,0xff,0x00,0xef]),
+};
+const speed = v=>F([0x7e,0x04,0x02,v,0xff,0xff,0xff,0x00,0xef]);
+
+/* ---------------- pixel builders (EXPERIMENTAL) ---------------- */
+const GRADS = {
+  'Pink → Orange (GTA VI sunset)': ['#ff2e93','#ff8a00'],
+  'Purple → Pink → Orange': ['#8a3ffc','#ff2e93','#ff8a00'],
+  'Teal → Pink': ['#27e3d1','#ff2e93'],
+};
+function lerpStops(stops, n){
+  const cs = stops.map(rgbHex); const out=[];
+  for(let i=0;i<n;i++){
+    const t = n===1?0:i/(n-1); const x=t*(cs.length-1); const k=Math.min(cs.length-2,Math.floor(x)); const f=x-k;
+    out.push([0,1,2].map(j=>b2(cs[k][j]+(cs[k+1][j]-cs[k][j])*f)));
+  } return out;
+}
+// Source: Biryukovlex/lotus-light-studio CUSTOM_CONTROL_INVESTIGATION.md "Recovered scene upload"
+function buildDIY(nodes, mode, grad, spd){
+  const len = nodes.length*3;
+  const start=[0x7e,0x32,len&255,(len>>8)&255,0,0,0xff,0xff,0xef];
+  const data=[]; let idx=1;
+  for(let i=0;i<nodes.length;i+=2){
+    const a=nodes[i], c=nodes[i+1]||[0xff,0xff,0xff];
+    data.push([0x7e,0x33,...a,...c,idx++ & 255]);
+  }
+  const end=[0x7e,0x34,mode,grad,spd,0xff,0xff,0xff,0xef];
+  let sum=0; [start,...data,end].forEach(f=>f.forEach(b=>sum+=b)); sum&=0xffff;
+  start[4]=(sum>>8)&255; start[5]=sum&255;
+  return [start,...data,end];
+}
+// Source: same doc, "Recovered palette preview" (57 bytes)
+function buildPalette(bri, spd, mode, save, cols){
+  const trip=[]; for(let i=0;i<16;i++){ const c=cols[i]||[0xff,0xff,0xff]; trip.push(...c); }
+  return F([0x7e,0x07,0xde,bri,spd,mode,save,cols.length,...trip,0xef]);
+}
+// Source: same doc, "Correctly sized native uploads" prose (RGB565 LE, 110 bytes). Exact byte positions reconstructed from prose.
+function rgb565(c){ const v=((c[0]>>3)<<11)|((c[1]>>2)<<5)|(c[2]>>3); return [v&255,(v>>8)&255]; }
+function buildRGB565(cols, mode, grad, spd){
+  const slots=[]; for(let i=0;i<50;i++) slots.push(...(cols[i]?rgb565(cols[i]):[0,0]));
+  return F([0x7e,0x39,cols.length,...slots,mode,grad,spd,cols.length,0x00,0x00,0xef]);
+}
+
+/* ---------------- step definitions ---------------- */
+const mk = (hexs)=>hexs; // readability
+const STEPS = [
+ { id:'init', title:'Init handshake', risk:'safe',
+   desc:'StripX sends two short writes right after connecting; the controller may ignore commands until it sees them. Source: elkbledom issue #11.',
+   src:'https://github.com/dave-code-ruiz/elkbledom/issues/11',
+   actions:[{label:'Send init (7E 07 83, then 7E 04 04)', frames:[{b:[0x7e,0x07,0x83],wait:150},{b:[0x7e,0x04,0x04],wait:150}]}] },
+
+ { id:'query', title:'Readback queries (read-only)', risk:'safe',
+   desc:'Asks the controller for brightness/speed and LED node counts. Reply shows up in the log as "RD" or "RX". Sign should not change. Node count gets auto-filled into later steps. Source: lotus-light-studio CUSTOM_CONTROL_INVESTIGATION.md.',
+   src:'https://github.com/Biryukovlex/lotus-light-studio/blob/main/docs/CUSTOM_CONTROL_INVESTIGATION.md',
+   actions:[
+    {label:'Info (7E 07 84 …)', frames:[F([0x7e,0x07,0x84,0xff,0xff,0xff,0xff,0x00,0xef])]},
+    {label:'Scene nodes (7E 07 36 …)', frames:[F([0x7e,0x07,0x36,0xff,0xff,0xff,0xff,0x00,0xef])]},
+    {label:'Total nodes (7E 07 37 …)', frames:[F([0x7e,0x07,0x37,0xff,0xff,0xff,0x00,0xff,0xef])]}],
+   answers:['nothing changed','got a reply in log','froze'] },
+
+ { id:'power', title:'Power off / on', risk:'safe',
+   desc:'Dialect A is the elkbledom MELK-OA10 table. Dialect B is Lotus Lamp. See which one the sign obeys.',
+   src:'https://github.com/dave-code-ruiz/elkbledom/blob/main/custom_components/elkbledom/models.json',
+   actions:[
+    {label:'A: OFF', frames:[A.off]},{label:'A: ON', frames:[A.on]},
+    {label:'B: OFF', frames:[B.off]},{label:'B: ON', frames:[B.on]}] },
+
+ { id:'colorB', title:'Solid red / green / blue · Dialect B (try first)', risk:'safe',
+   desc:'7E 07 05 03 RR GG BB 10 EF. Turn the sign ON first (step above). Note if the colors come out right or swapped.',
+   src:'https://github.com/wporter82/lotus-lamp-python/blob/main/docs/PROTOCOL.md',
+   actions:[{label:'B: RED',frames:[B.color(255,0,0)]},{label:'B: GREEN',frames:[B.color(0,255,0)]},{label:'B: BLUE',frames:[B.color(0,0,255)]},{label:'B: PINK',frames:[B.color(255,46,147)]}],
+   answers:['nothing','turned on','turned off','changed color','multiple colors','froze'] },
+
+ { id:'colorA', title:'Solid red / green / blue · Dialect A', risk:'risk',
+   desc:'7E 00 05 03 RR GG BB 00 EF. WARNING: this exact frame has hung some MELK-OA10 lamps until power cycled. Only try it if Dialect B did nothing, or if you want to compare. If it freezes, unplug 5 seconds.',
+   src:'https://github.com/dave-code-ruiz/elkbledom/blob/main/custom_components/elkbledom/models.json',
+   actions:[{label:'A: RED',frames:[A.color(255,0,0)]},{label:'A: GREEN',frames:[A.color(0,255,0)]},{label:'A: BLUE',frames:[A.color(0,0,255)]}] },
+
+ { id:'bright', title:'Brightness', risk:'safe',
+   desc:'A: 7E 04 01 II 01 FF FF 00 EF. B: 7E 07 01 XX FF FF FF 00 EF (0-100). Send a solid color first so you can see the change.',
+   src:'https://github.com/Biryukovlex/lotus-light-studio/blob/main/docs/PROTOCOL.md',
+   actions:[{label:'B: 100%',frames:[B.bright(100)]},{label:'B: 15%',frames:[B.bright(15)]},{label:'A: 100%',frames:[A.bright(100)]},{label:'A: 15%',frames:[A.bright(15)]}],
+   answers:['nothing','got dimmer','got brighter','froze'] },
+
+ { custom:'effects', id:'effects', title:'Built-in effects sweep', risk:'safe' },
+
+ { id:'pin', title:'Color order (pin order)', risk:'risk',
+   desc:'7E 06 81 P1 P2 P3 FF 00 EF. EXPERIMENTAL values: the source (wirelab blog) says there are six permutations but does not list the byte values I could verify, so P1-P3 are editable and default to 0,1,2. Only use this if solid red/green/blue came out in the wrong colors. It may be saved on the controller; send 0,1,2 again to go back.',
+   src:'https://blog.wirelab.pl/en/cheap-led-strip-undocumented-protocol',
+   custom:'pin' },
+
+ { id:'count', title:'LED count', risk:'risk', custom:'count',
+   desc:'7E 07 21 lo hi 00 FF 00 EF. On another unit, shortening the count turned the LEDs past that count OFF, and restoring the count brought them back. Use the readback count from step 2 as the value. Tap Restore afterwards.',
+   src:'https://github.com/Biryukovlex/lotus-light-studio/blob/main/docs/CUSTOM_CONTROL_INVESTIGATION.md' },
+
+ { custom:'diy', id:'diy', title:'EXPERIMENTAL: per-pixel DIY upload (7E 32 / 33 / 34)', risk:'exp' },
+ { custom:'palette', id:'palette', title:'EXPERIMENTAL: palette preview (57-byte, mode 221)', risk:'exp' },
+ { custom:'r565', id:'r565', title:'EXPERIMENTAL: RGB565 enhanced scene (110-byte)', risk:'exp' },
+ { custom:'raw', id:'raw', title:'Advanced: raw hex', risk:'risk' },
+];
+
+const ANS_DEFAULT=['nothing','turned on','turned off','changed color','multiple colors','froze'];
+const lastAct = {};
+function q(stepId, answers){
+  const ans = answers||ANS_DEFAULT;
+  const d=document.createElement('div'); d.className='q';
+  d.innerHTML=`<b>What did the sign do?</b><div class="ans"></div><input type="text" placeholder="Optional note (e.g. 'only left half lit')">`;
+  const box=d.querySelector('.ans'); const note=d.querySelector('input');
+  ans.forEach(a=>{ const b=document.createElement('button'); b.textContent=a; if(a==='froze') b.className='frz';
+    b.onclick=()=>{ [...box.children].forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); b.closest('.card').classList.add('done');
+      L('ANS',`step=${stepId} action="${lastAct[stepId]||'(none sent yet)'}" answer="${a}" note="${note.value.replace(/"/g,"'")}"`);
+      if(a==='froze') alert('Unplug the sign for 5 seconds, plug back in, then tap Reconnect.'); };
+    box.appendChild(b); });
+  note.addEventListener('change',()=>{ L('NOTE',`step=${stepId} action="${lastAct[stepId]||''}" note="${note.value.replace(/"/g,"'")}"`); });
+  return d;
+}
+function badge(r){ return r==='safe'?'<span class="badge safe">safe</span>':r==='risk'?'<span class="badge risk">careful</span>':'<span class="badge exp">experimental</span>'; }
+function frameBox(){ const d=document.createElement('div'); d.className='hex'; d.textContent='(nothing sent yet)'; return d; }
+function doSend(stepId, label, frames, box){
+  lastAct[stepId]=label;
+  box.textContent = frames.map(f=>hex(Array.isArray(f)?f:f.b)).join('\n');
+  L('STEP',`step=${stepId} sending "${label}"`);
+  return sendFrames(frames, `${stepId}:${label}`);
+}
+function head(s,i){ return `<div class="step">Step ${i+1} <span style="color:var(--mut)">·</span> ${badge(s.risk)}</div><h2>${s.title}</h2>${s.desc?`<p class="mut">${s.desc}${s.src?` <a href="${s.src}" target="_blank" rel="noopener">source</a>`:''}</p>`:''}`; }
+function btn(label, cls, fn){ const b=document.createElement('button'); b.textContent=label; if(cls) b.className=cls; b.onclick=fn; return b; }
+
+function renderSteps(){
+  const root=$('#steps'); root.innerHTML='';
+  STEPS.forEach((s,i)=>{
+    const card=document.createElement('div'); card.className='card'; card.id='card_'+s.id;
+    card.innerHTML=head(s,i);
+    const box=frameBox();
+    if(!s.custom){
+      const row=document.createElement('div'); row.className='row';
+      s.actions.forEach(a=>row.appendChild(btn(a.label,'send',()=>doSend(s.id,a.label,a.frames,box))));
+      card.appendChild(row); card.appendChild(box); card.appendChild(q(s.id,s.answers));
+    } else CUSTOM[s.custom](s,card,box);
+    root.appendChild(card);
+  });
+}
+
+/* ---------------- custom cards ---------------- */
+const CUSTOM = {};
+CUSTOM.effects = (s,card,box)=>{
+  card.insertAdjacentHTML('beforeend',`
+   <p class="mut">Step through effect IDs 0-212 and look for ones that show several colors across the letters at once (a gradient or wave), versus the whole sign flipping color together. Names come from the Lotus Lamp table (<a href="https://gist.github.com/clienthax/5b3cc5fa68f7c4c943f2252eaa21d804" target="_blank" rel="noopener">gist</a>) and may not match your sign.</p>
+   <div class="inl"><div><label>Dialect</label><select id="fxD"><option value="B">B (7E 07 03 …)</option><option value="A">A (7E 05 03 … 06 …)</option></select></div>
+   <div><label>Effect ID</label><input type="number" id="fxId" min="0" max="255" value="199"></div></div>
+   <div class="swatch" style="background:linear-gradient(90deg,#ff2e93,#ff8a00)"></div>
+   <p id="fxName" style="font-weight:700"></p>
+   <div class="row"><button class="send" id="fxPrev">◀ Prev</button><button class="send" id="fxSend">Send</button><button class="send" id="fxNext">Next ▶</button></div>
+   <div class="row"><button class="sm" id="fxAuto">Auto-step every 4s: OFF</button><button class="sm" id="spd25">Speed 25</button><button class="sm" id="spd60">Speed 60</button><button class="sm" id="spd100">Speed 100</button></div>
+   <p class="mut">Quick picks (gradient-ish names):</p><div class="row" id="fxQuick"></div>`);
+  card.appendChild(box);
+  const id=card.querySelector('#fxId'), dsel=card.querySelector('#fxD'), nm=card.querySelector('#fxName');
+  const name=()=>{ nm.textContent=`#${id.value}: ${EFFECT_NAMES[id.value]||'(no name in table)'}`; };
+  const go=()=>{ id.value=Math.max(0,Math.min(255,+id.value||0)); name(); const f=(dsel.value==='A'?A:B).effect(+id.value);
+    return doSend('effects',`dialect ${dsel.value} effect ${id.value} ${EFFECT_NAMES[id.value]||''}`.trim(),[f],box); };
+  card.querySelector('#fxSend').onclick=go;
+  card.querySelector('#fxPrev').onclick=()=>{ id.value=Math.max(0,+id.value-1); go(); };
+  card.querySelector('#fxNext').onclick=()=>{ id.value=Math.min(255,+id.value+1); go(); };
+  id.oninput=name; name();
+  let timer=null; const auto=card.querySelector('#fxAuto');
+  const stop=()=>{ if(timer){clearInterval(timer);timer=null;} auto.textContent='Auto-step every 4s: OFF'; };
+  window.__stopAuto=stop;
+  auto.onclick=()=>{ if(timer){stop();return;} auto.textContent='Auto-step every 4s: ON (tap to stop)'; go(); timer=setInterval(()=>{ id.value=Math.min(255,+id.value+1); go(); if(+id.value>=212) stop(); },4000); };
+  [[25,'#spd25'],[60,'#spd60'],[100,'#spd100']].forEach(([v,sel])=>card.querySelector(sel).onclick=()=>doSend('effects',`speed ${v}`,[speed(v)],box));
+  const quick=[[199,'7-Color Gradual'],[200,'R-Y Gradual'],[201,'R-P Gradual'],[204,'B-P Gradual'],[83,'7-Color Wave'],[85,'R-G-B Wave'],[87,'Y-C-P Wave'],[212,'7-Color Energy'],[153,'W-P-W Flow'],[165,'P-W-P Flow'],[23,'7-Color Tail'],[103,'7-Color Running'],[205,'Red Marquee'],[210,'Purple Marquee']];
+  const qb=card.querySelector('#fxQuick'); quick.forEach(([v,n])=>qb.appendChild(btn(`${v} ${n}`,'sm',()=>{ id.value=v; go(); })));
+  const m=document.createElement('div'); m.className='q'; m.innerHTML='<b>How does this effect look?</b><div class="ans"></div><input type="text" placeholder="Optional note">';
+  const ab=m.querySelector('.ans'), nt=m.querySelector('input');
+  ['nothing','whole sign one color at a time','GRADIENT across letters','several colors, jumpy','froze'].forEach(a=>{
+    const b=document.createElement('button'); b.textContent=a; if(a==='froze') b.className='frz';
+    b.onclick=()=>{ [...ab.children].forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); stop(); L('ANS',`step=effects effect=${id.value} dialect=${dsel.value} name="${EFFECT_NAMES[id.value]||''}" answer="${a}" note="${nt.value.replace(/"/g,"'")}"`); if(a==='froze') alert('Unplug the sign for 5 seconds, plug back in, then tap Reconnect.'); };
+    ab.appendChild(b); });
+  card.appendChild(m);
+};
+
+CUSTOM.pin = (s,card,box)=>{
+  card.insertAdjacentHTML('beforeend',`<div class="inl"><div><label>P1</label><input type="number" id="p1" value="0"></div><div><label>P2</label><input type="number" id="p2" value="1"></div><div><label>P3</label><input type="number" id="p3" value="2"></div></div>
+  <div class="row"><button class="send" id="pinGo">Send pin order</button></div>`);
+  card.appendChild(box);
+  card.querySelector('#pinGo').onclick=()=>doSend('pin',`pin ${p1.value},${p2.value},${p3.value}`,[F([0x7e,0x06,0x81,+p1.value,+p2.value,+p3.value,0xff,0x00,0xef])],box);
+  card.appendChild(q('pin',['nothing','colors changed order','froze','no change to colors']));
+};
+CUSTOM.count = (s,card,box)=>{
+  card.insertAdjacentHTML('beforeend',`<label>LED count (from readback, or type one)</label><input type="number" id="ledCount" min="1" max="1000" placeholder="run readback step first">
+  <div class="row"><button class="send" id="cntGo">Set this count</button><button class="send" id="cntHalf">Set half</button><button class="send" id="cntRestore">Restore original</button></div>`);
+  card.appendChild(box);
+  const n=card.querySelector('#ledCount'); n.addEventListener('input',()=>n.dataset.touched=1);
+  let orig=null;
+  const fr=c=>F([0x7e,0x07,0x21,c&255,(c>>8)&255,0x00,0xff,0x00,0xef]);
+  card.querySelector('#cntGo').onclick=()=>{ const c=+n.value; if(!c){alert('Enter a count first');return;} if(orig===null) orig=lastCount||c; doSend('count',`set count ${c}`,[fr(c)],box); };
+  card.querySelector('#cntHalf').onclick=()=>{ const base=+n.value||lastCount; if(!base){alert('Run the readback step first or enter a count');return;} if(orig===null) orig=base; doSend('count',`set count ${Math.floor(base/2)}`,[fr(Math.floor(base/2))],box); };
+  card.querySelector('#cntRestore').onclick=()=>{ const c=orig||lastCount||+n.value; if(!c){alert('No original known');return;} doSend('count',`restore count ${c}`,[fr(c)],box); };
+  card.appendChild(q('count',['nothing','some LEDs turned off','all stayed same','froze']));
+};
+
+function gradSelect(id){ return `<label>Gradient</label><select id="${id}">${Object.keys(GRADS).map(k=>`<option>${k}</option>`).join('')}</select>`; }
+function swatchFor(sel){ const st=GRADS[sel.value]; return `linear-gradient(90deg,${st.join(',')})`; }
+
+CUSTOM.diy = (s,card,box)=>{
+  card.insertAdjacentHTML('beforeend',`<p class="mut">Frames recovered from the Android app by another researcher: start <code>7E 32 lenLo lenHi chkHi chkLo FF FF EF</code>, data <code>7E 33 R G B R G B index</code> (two nodes each), end <code>7E 34 mode gradient speed FF FF FF EF</code>. Checksum = sum of all bytes of all frames mod 65536. It did NOT work on the researcher's MELK-OA10, and the app excludes MELK-OA from DIY. It may work on yours; that's what we're testing. <a href="https://github.com/Biryukovlex/lotus-light-studio/blob/main/docs/CUSTOM_CONTROL_INVESTIGATION.md" target="_blank" rel="noopener">source</a></p>
+  ${gradSelect('dyG')}<div class="swatch" id="dySw"></div>
+  <div class="inl"><div><label>Nodes</label><input type="number" id="pxNodes" value="20" min="2" max="200"></div><div><label>Speed byte</label><input type="number" id="dySp" value="50" min="0" max="255"></div><div><label>Pacing ms</label><input type="number" id="dyPace" value="100" min="0"></div></div>
+  <div class="row"><button class="send" data-v="static">Variant 1: static (mode 0, gradient 0)</button><button class="send" data-v="grad">Variant 2: static + gradient flag 1</button><button class="send" data-v="fwd">Variant 3: forward flow (mode 3)</button><button class="send" data-v="rev">Variant 4: reverse flow (mode 4)</button></div>
+  <div class="row"><button class="sm" id="dyQ">Re-run node-count readback</button><button class="sm" id="dyOn">Power ON (B)</button></div>`);
+  card.appendChild(box);
+  const g=card.querySelector('#dyG'), sw=card.querySelector('#dySw'); g.onchange=()=>sw.style.background=swatchFor(g); sw.style.background=swatchFor(g);
+  const nn=card.querySelector('#pxNodes'); nn.addEventListener('input',()=>nn.dataset.touched=1);
+  const V={static:[0,0],grad:[0,1],fwd:[3,0],rev:[4,0]};
+  card.querySelectorAll('button[data-v]').forEach(b=>b.onclick=()=>{
+    const [mode,gr]=V[b.dataset.v]; const n=Math.max(2,+nn.value||20);
+    const frames=buildDIY(lerpStops(GRADS[g.value],n),mode,gr,+card.querySelector('#dySp').value);
+    const pace=+card.querySelector('#dyPace').value||0;
+    doSend('diy',`${b.dataset.v} ${n} nodes ${g.value}`,frames.map(f=>({b:f,wait:pace})),box);
+    box.textContent=`${frames.length} frames. Start: ${hex(frames[0])}\nFirst data: ${hex(frames[1])}\nEnd: ${hex(frames[frames.length-1])}`;
+  });
+  card.querySelector('#dyQ').onclick=()=>doSend('diy','readback 36/37',[F([0x7e,0x07,0x36,0xff,0xff,0xff,0xff,0x00,0xef]),F([0x7e,0x07,0x37,0xff,0xff,0xff,0x00,0xff,0xef])],box);
+  card.querySelector('#dyOn').onclick=()=>doSend('diy','power on B',[B.on],box);
+  card.appendChild(q('diy',['nothing','changed color','pink→orange gradient!','multiple colors','went dark','froze']));
+};
+CUSTOM.palette = (s,card,box)=>{
+  card.insertAdjacentHTML('beforeend',`<p class="mut">57-byte frame <code>7E 07 DE bri speed mode save count [16×RGB] EF</code>, mode 221 = "Gradient", save flag 0 = preview only (not stored). Recovered by the same researcher; no visible change on their lamp. <a href="https://github.com/Biryukovlex/lotus-light-studio/blob/main/docs/CUSTOM_CONTROL_INVESTIGATION.md" target="_blank" rel="noopener">source</a></p>
+  <div class="inl"><div><label>Speed</label><input type="number" id="paSp" value="20"></div><div><label>Mode</label><input type="number" id="paMode" value="221"></div></div>
+  <div class="row"><button class="send" data-p="2">Pink + Orange</button><button class="send" data-p="3">Purple + Pink + Orange</button><button class="send" data-p="rgb">Red + Green + Blue (as researcher's test)</button></div>`);
+  card.appendChild(box);
+  const P={'2':['#ff2e93','#ff8a00'],'3':['#8a3ffc','#ff2e93','#ff8a00'],'rgb':['#ff0000','#00ff00','#0000ff']};
+  card.querySelectorAll('button[data-p]').forEach(b=>b.onclick=()=>{
+    const cols=P[b.dataset.p].map(rgbHex);
+    doSend('palette',`palette ${b.textContent}`,[buildPalette(100,+card.querySelector('#paSp').value,+card.querySelector('#paMode').value,0,cols)],box); });
+  card.appendChild(q('palette',['nothing','changed color','smooth gradient','multiple colors','went dark','froze']));
+};
+CUSTOM.r565 = (s,card,box)=>{
+  card.insertAdjacentHTML('beforeend',`<p class="mut">110-byte frame: <code>7E 39 count</code> + 50×RGB565 (little endian) + mode, gradient, speed, used-count + 2 pad + <code>EF</code>. Layout reconstructed from the prose description in the research doc (exact padding bytes not published), so treat as a guess. Meant for MELK-OG/OH family, not OA. <a href="https://github.com/Biryukovlex/lotus-light-studio/blob/main/docs/CUSTOM_CONTROL_INVESTIGATION.md" target="_blank" rel="noopener">source</a></p>
+  ${gradSelect('rGr')}<div class="inl"><div><label>Colors (max 50)</label><input type="number" id="rN" value="20" min="2" max="50"></div><div><label>Speed</label><input type="number" id="rSp" value="50"></div></div>
+  <div class="row"><button class="send" id="rGo">Send static (mode 0)</button><button class="send" id="rGo2">Send flow (mode 3)</button><button class="sm" id="rRaw">Copy frame into Raw box</button></div>`);
+  card.appendChild(box);
+  const build=mode=>buildRGB565(lerpStops(GRADS[card.querySelector('#rGr').value],Math.min(50,Math.max(2,+card.querySelector('#rN').value||20))),mode,0,+card.querySelector('#rSp').value);
+  card.querySelector('#rGo').onclick=()=>doSend('r565','static',[build(0)],box);
+  card.querySelector('#rGo2').onclick=()=>doSend('r565','flow',[build(3)],box);
+  card.querySelector('#rRaw').onclick=()=>{ const t=document.querySelector('#rawTxt'); if(t){ t.value=hex(build(0)); t.scrollIntoView({behavior:'smooth'}); } };
+  card.appendChild(q('r565',['nothing','changed color','smooth gradient','multiple colors','went dark','froze']));
+};
+CUSTOM.raw = (s,card,box)=>{
+  card.insertAdjacentHTML('beforeend',`<p class="mut">Any hex, spaces optional. One frame per line; lines are sent in order with the delay from Options.</p>
+  <textarea id="rawTxt" placeholder="7E 07 05 03 FF 00 80 10 EF"></textarea>
+  <div class="row"><button class="send" id="rawGo">Send</button></div>`);
+  card.appendChild(box);
+  card.querySelector('#rawGo').onclick=()=>{ try{ const lines=card.querySelector('#rawTxt').value.split('\n').map(x=>x.trim()).filter(Boolean); if(!lines.length) throw new Error('Type some hex first'); doSend('raw','raw '+lines.length+' frame(s)',lines.map(parseHex),box); }catch(e){ showErr(e,'Raw hex'); alert(errStr(e)); } };
+  card.appendChild(q('raw'));
+};
+
+/* ---------------- All off, copy, share ---------------- */
+$('#alloff').onclick=async()=>{
+  if(window.__stopAuto) window.__stopAuto();
+  L('STEP','ALL OFF pressed');
+  gen++;
+  await sendFrames([{b:B.off,wait:80},{b:A.off,wait:80},{b:B.color(0,0,0),wait:80}],'all-off');
+};
+function results(){
+  return `GTA SIGN BLE PROBE RESULTS\nUA: ${navigator.userAgent}\nDevice: ${dev?`${dev.name} (${dev.id})`:'(none)'}\nTime: ${new Date().toString()}\n\n${LOG.join('\n')}`;
+}
+async function copyText(t){
+  try{ await navigator.clipboard.writeText(t); return true; }catch(e){}
+  const ta=document.createElement('textarea'); ta.value=t; ta.style.position='fixed'; ta.style.opacity=0; document.body.appendChild(ta); ta.focus(); ta.select();
+  let ok=false; try{ ok=document.execCommand('copy'); }catch(e){} ta.remove(); return ok;
+}
+$('#btnCopy').onclick=async()=>{ const ok=await copyText(results()); alert(ok?'Copied! Paste it back to me.':'Copy blocked. Long-press the log box, Select All, Copy.'); };
+$('#btnShare').onclick=async()=>{ const t=results(); try{ if(navigator.share) await navigator.share({title:'GTA sign BLE results',text:t}); else throw new Error('no share'); }catch(e){ if(e&&e.name==='AbortError') return; const ok=await copyText(t); alert(ok?'Share not available, copied instead.':'Share and copy both blocked. Long-press the log, Select All, Copy.'); } };
+$('#btnClear').onclick=()=>{ if(confirm('Clear the whole log?')){ LOG=[]; localStorage.removeItem('gtasign_log'); renderLog(); } };
+$('#btnConnect').onclick=()=>connect(false);
+$('#btnConnectAll').onclick=()=>connect(true);
+$('#btnReconnect').onclick=reconnect;
+$('#btnDisconnect').onclick=disconnect;
+$('#btnTree').onclick=async()=>{ try{ if(!server||!dev.gatt.connected) throw new Error('Not connected'); await enumerate(); }catch(e){ showErr(e,'Re-scan'); } };
+window.addEventListener('error',e=>L('ERR','JS '+e.message));
+window.addEventListener('unhandledrejection',e=>L('ERR','Promise '+errStr(e.reason)));
+
+renderSteps(); renderLog();
+L('INFO',`Page loaded v1 secure=${isSecureContext} bluetooth=${!!navigator.bluetooth} share=${!!navigator.share}`);
+</script>
+</body>
+</html>
